@@ -1,0 +1,5 @@
+# Agent Harness 学习项目（learn-claudecode s01→s20）
+# 与 agent_platform 同栈：DeepSeek 聊天 + langchain
+langchain-openai==1.6.3
+langchain-core==1.6.4
+python-dotenv==1.2.3
