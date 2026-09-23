@@ -64,6 +64,10 @@ class Hooks:
 hooks = Hooks()
 
 # ───────── 注册钩子（横切逻辑全在这里，循环体不在其中）─────────
+@hooks.on("loop_start")
+def hook_log_start(query):
+    print(f"    [hook:loop_start]   收到问题：{query}")
+
 @hooks.on("before_model")
 def hook_log_model(round_no, messages):
     print(f"    [hook:before_model] 第 {round_no} 轮，上下文 {len(messages)} 条")
