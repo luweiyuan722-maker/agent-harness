@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 .DS_Store
 memory/
+
+# s08 运行时产物：工具结果归档 + 历史留底（不应入库）
+.task_outputs/
+.transcripts/

@@ -21,7 +21,7 @@ llm = ChatOpenAI(model="deepseek-chat",
 # ═══════════ 计划状态：存在循环【外】的独立变量 ═══════════
 todos: list[str] = []
 
-def render_todos() -> str:
+def render_todos() -> str:# 渲染当前计划
     if not todos:
         return "（暂无计划）"
     return "\n".join(f"  {i+1}. {t}" for i, t in enumerate(todos))
@@ -46,8 +46,8 @@ def run_bash(command: str) -> str:
 def todo_write(items: list[str]) -> str:
     """创建或更新任务计划。传入【完整】的新计划列表（字符串数组），整体替换旧计划。
     每项格式："[ ] 待做" 或 "[x] 已完成"。例如 ["[ ] 查看目录", "[x] 统计文件数"]。"""
-    global todos
-    todos = list(items)
+    global todos# 全局变量，需要声明为 global 才能修改
+    todos = list(items)# 更新计划
     return "计划已更新：\n" + render_todos()
 
 # ───────── 单一数据源（s02 的成果）─────────

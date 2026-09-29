@@ -4,6 +4,21 @@
 
 > **一个 while 循环 + 一个工具 = 一个 Agent。** 剩下 19 章，都是在这个循环的**外围**叠加机制。
 
+## 这是一个「通用 Harness」，不是某个领域的工具
+
+核心是**领域无关**的：一个 model/tool 循环 + 外围机制（权限、钩子、计划、子代理、技能、压缩）。
+
+演示里用 **C++ 代码审查** 当例子，只是因为"审查代码"能自然触发**多步工具调用 + 专业技能注入**，最能体现各层机制在真实场景下的配合。换成别的领域**不需要改任何代码**，只要加一个技能文件：
+
+| 想要的能力 | 需要做的事 | 状态 |
+|---|---|---|
+| C++ 代码审查（内存/资源/并发/性能） | `skills/cpp-review/SKILL.md` | 已内置 |
+| SQL 编写与优化（索引/查询/事务） | `skills/sql-expert/SKILL.md` | 已内置 |
+| Python / Go / Rust 代码审查 | 换个清单写 `skills/<name>/SKILL.md` | 加文件即可 |
+| 数据分析、写作、运维排障、文档问答… | 同上 | 加文件即可 |
+
+工具层同样是通用的——`run_bash` 能执行的任何事，Agent 都能编排成多步任务。
+
 ## 进度
 
 | # | 章节 | 状态 |
@@ -15,7 +30,7 @@
 | s05 | Todo manager（计划管理） | ✅ |
 | s06 | Subagent（子代理） | ✅ |
 | s07 | Skill loader（按需加载技能） | ✅ |
-| s08 | Context compaction（上下文压缩） | ⬜ |
+| s08 | Context compaction（上下文压缩六件套） | ✅ |
 | s09 | Durable memory（持久记忆层） | ⬜ |
 | s10–s20 | prompt 组装 / 重试 / 任务板 / 后台 / 定时 / 团队 / 协议 / worktree / MCP / 整合 | ⬜ |
 
@@ -26,7 +41,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env        # 填入你的 DEEPSEEK_API_KEY
-python s07_skill_loader.py  # 或任意一章
+python s08_context_compact.py   # 或任意一章
 ```
 
 ## 各章文件
@@ -40,7 +55,27 @@ python s07_skill_loader.py  # 或任意一章
 | `s05_todo_manager.py` | s05 | 计划存在循环外的变量，`todo_write` 工具写入 + 每轮注入 prompt |
 | `s06_subagent.py` | s06 | 子 agent = 独立循环 + 独立 messages，包装成 `delegate` 工具（主/子工具分离防递归） |
 | `s07_skill_loader.py` | s07 | 技能目录进 prompt，正文用 `load_skill` 按需注入（省 92% 上下文） |
+| `s08_context_compact.py` | s08 | 上下文压缩六件套（见下） |
 | `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
+
+## s08：上下文压缩六件套
+
+**核心原则：便宜的先跑，贵的后跑。** 前三层 0 次 API 调用，只有后两层才调 LLM。
+
+| 层 | 触发条件 | 动作 | 成本 |
+|:--:|---|---|:--:|
+| 度量 `estimate_chars` | 每轮 | 估算字符数（序列化整条消息，不漏 `tool_calls`） | 0 |
+| **L3** `tool_result_budget` | 工具结果总量 > 200k | 大结果**落盘**，上下文留路径 + 预览（信息不丢） | 0 |
+| **L1** `snip_compact` | 消息数 > 50 | 保留头 3 + 尾 47，中间用 marker 替代 | 0 |
+| **L2** `micro_compact` | 上下文 > 50k | 模型**已看过**的旧工具结果 → 占位符 | 0 |
+| **L4** `compact_history` | 前三层后仍超限 | **LLM 全量摘要**成一条状态摘要 | 1 API |
+| **应急** `reactive_compact` | API 报 `prompt_too_long` | 保住最新 5 条，其余摘要 | 1 API |
+
+**三个关键设计**：
+
+1. **顺序即设计** —— 执行顺序是 `L3 → L1 → L2 → L4`（与编号不同）。L3 必须最先跑：大结果先落盘，L2 才敢放心把旧结果换成占位符。
+2. **两条线** —— 触发线（`CONTEXT_CHAR_LIMIT`，超了才动手）与达标线（`target = LIMIT × 0.8`，压到这就收手）是**两个不同的数**。
+3. **占位符要继承恢复信息** —— 被 L2 替换的若是 L3 的落盘引用，占位符必须**保留文件路径**，否则"信息不丢"的承诺会被 L2 打破。
 
 ## 技能库（s07 起）
 
@@ -52,8 +87,12 @@ skills/
 └── sql-expert/SKILL.md      # SQL 编写与优化规范（索引/查询/事务）
 ```
 
+> 加一个目录就是加一项能力 —— 这是「通用 harness」最直观的体现。
+
 ## 环境
 
 - Python 3.13（`.venv`）
 - `langchain-openai` / `langchain-core` / `python-dotenv`
 - LLM：DeepSeek（`deepseek-chat`）
+
+> 运行时会生成 `.task_outputs/`（工具结果归档）和 `.transcripts/`（历史留底）—— 已在 `.gitignore` 中排除。
