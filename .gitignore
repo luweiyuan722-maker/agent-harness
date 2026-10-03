@@ -8,3 +8,6 @@ memory/
 # s08 运行时产物：工具结果归档 + 历史留底（不应入库）
 .task_outputs/
 .transcripts/
+
+# s09 运行时产物：持久记忆库（每条记忆一个 .md，属于用户数据，不应入库）
+.memory/

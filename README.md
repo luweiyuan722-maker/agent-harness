@@ -31,7 +31,7 @@
 | s06 | Subagent（子代理） | ✅ |
 | s07 | Skill loader（按需加载技能） | ✅ |
 | s08 | Context compaction（上下文压缩六件套） | ✅ |
-| s09 | Durable memory（持久记忆层） | ⬜ |
+| s09 | Durable memory（持久记忆层） | ✅ |
 | s10–s20 | prompt 组装 / 重试 / 任务板 / 后台 / 定时 / 团队 / 协议 / worktree / MCP / 整合 | ⬜ |
 
 ## 运行
@@ -56,6 +56,7 @@ python s08_context_compact.py   # 或任意一章
 | `s06_subagent.py` | s06 | 子 agent = 独立循环 + 独立 messages，包装成 `delegate` 工具（主/子工具分离防递归） |
 | `s07_skill_loader.py` | s07 | 技能目录进 prompt，正文用 `load_skill` 按需注入（省 92% 上下文） |
 | `s08_context_compact.py` | s08 | 上下文压缩六件套（见下） |
+| `s09_memory_full.py` | s09 | 持久记忆层：文件仓库 + 索引 + 按需注入 + 提取 + 去重（见下） |
 | `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
 
 ## s08：上下文压缩六件套
@@ -77,6 +78,25 @@ python s08_context_compact.py   # 或任意一章
 2. **两条线** —— 触发线（`CONTEXT_CHAR_LIMIT`，超了才动手）与达标线（`target = LIMIT × 0.8`，压到这就收手）是**两个不同的数**。
 3. **占位符要继承恢复信息** —— 被 L2 替换的若是 L3 的落盘引用，占位符必须**保留文件路径**，否则"信息不丢"的承诺会被 L2 打破。
 
+## s09：持久记忆层（Durable Memory）
+
+**核心原则：压缩会丢细节，要有一层不丢的。** 记忆活过压缩、也活过会话。
+
+| 模块 | 机制 | 说明 |
+|:--:|---|---|
+| 存储 | `.memory/<slug>.md` | 一条记忆一个文件，frontmatter（name/description/type）+ 正文带 **Why/How** |
+| 索引 | `MEMORY.md` | 一行一个链接，**常驻 SYSTEM prompt**（轻、稳定 → prompt cache 命中） |
+| 按需 | side-query | LLM 轻量筛选相关记忆，正文**注入 user turn**（不污染 SYSTEM 的 cache） |
+| 降级 | bigram 关键词 | side-query 挂了 → 2 字滑动窗口本地匹配（中文分词近似） |
+| 写入 | `extract_memories` | 任务结束（无 tool_calls）时提取，不在每轮（防记半成品想法） |
+| 去重 | `find_duplicate` | 写入前 LLM 查重，重复则**更新**不新建（同义不同措辞也能识别） |
+
+**四类记忆**：`user`（你是谁）/ `feedback`（怎么做事）/ `project`（在发生什么）/ `reference`（东西在哪找）。
+
+**两条加载路径（prompt cache 友好）**：索引（稳定）放 SYSTEM，正文（多变）放 user turn —— 稳定的放前面保住 cache 前缀，多变的放后面不破坏它。
+
+**两个踩过的坑**：① `str.format()` 撞上 prompt 里的 JSON 花括号 → `KeyError`，改用 `replace`；② 中文整段子串匹配失效（"内存管理用"匹配不到"内存泄漏"）→ 用 2 字 bigram 近似分词。
+
 ## 技能库（s07 起）
 
 技能文件放在 `skills/<name>/SKILL.md`，frontmatter 写 `name` + `description`（描述进 prompt 当目录），正文按需加载：
@@ -95,4 +115,4 @@ skills/
 - `langchain-openai` / `langchain-core` / `python-dotenv`
 - LLM：DeepSeek（`deepseek-chat`）
 
-> 运行时会生成 `.task_outputs/`（工具结果归档）和 `.transcripts/`（历史留底）—— 已在 `.gitignore` 中排除。
+> 运行时会生成 `.task_outputs/`（工具结果归档）、`.transcripts/`（历史留底）和 `.memory/`（持久记忆库，属于用户数据）—— 均已在 `.gitignore` 中排除。
