@@ -32,7 +32,8 @@
 | s07 | Skill loader（按需加载技能） | ✅ |
 | s08 | Context compaction（上下文压缩六件套） | ✅ |
 | s09 | Durable memory（持久记忆层） | ✅ |
-| s10–s20 | prompt 组装 / 重试 / 任务板 / 后台 / 定时 / 团队 / 协议 / worktree / MCP / 整合 | ⬜ |
+| s10 | Task system（任务系统：依赖图 + 持久化） | ✅ |
+| s11–s20 | 后台任务 / 定时 / 团队 / 协议 / worktree / MCP / 整合 | ⬜ |
 
 ## 运行
 
@@ -57,6 +58,7 @@ python s08_context_compact.py   # 或任意一章
 | `s07_skill_loader.py` | s07 | 技能目录进 prompt，正文用 `load_skill` 按需注入（省 92% 上下文） |
 | `s08_context_compact.py` | s08 | 上下文压缩六件套（见下） |
 | `s09_memory_full.py` | s09 | 持久记忆层：文件仓库 + 索引 + 按需注入 + 提取 + 去重（见下） |
+| `s10_task_system.py` | s10 | 任务系统：Task DAG（blockedBy 依赖 + owner 分工）+ .tasks/ 持久化 + 状态机（见下） |
 | `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
 
 ## s08：上下文压缩六件套
@@ -96,6 +98,23 @@ python s08_context_compact.py   # 或任意一章
 **两条加载路径（prompt cache 友好）**：索引（稳定）放 SYSTEM，正文（多变）放 user turn —— 稳定的放前面保住 cache 前缀，多变的放后面不破坏它。
 
 **两个踩过的坑**：① `str.format()` 撞上 prompt 里的 JSON 花括号 → `KeyError`，改用 `replace`；② 中文整段子串匹配失效（"内存管理用"匹配不到"内存泄漏"）→ 用 2 字 bigram 近似分词。
+
+## s10：任务系统（Task System）
+
+**核心原则：大目标拆成小任务，排好序，持久化。** 相比 s05 TodoWrite，任务有了 ID、依赖（`blockedBy`）和分工（`owner`），并持久化到 `.tasks/{id}.json` 跨会话可恢复。
+
+| 组件 | 机制 |
+|------|------|
+| `Task` | dataclass 六字段：id / subject / description / status / owner / blockedBy |
+| `TaskStore` | 校验 ID + 读写 JSON + 排他写入（`open("x")`）+ 路径安全 + 防环 |
+| 状态机 | `pending ──claim──→ in_progress ──complete──→ completed` |
+| `create_task` / `update_task` | 创建节点 / 加依赖边（两阶段构建） |
+| `claim_task` / `complete_task` | 认领（依赖全完成才行）/ 完成 + 解锁下游 |
+
+**三个关键设计**：
+1. **两阶段构建** —— 先 create 所有节点拿运行时 ID，再 update 加边：同级工具调用无法引用另一个调用刚生成的 ID。
+2. **防环** —— `_depends_on` 用 BFS 检测传递依赖，防止 `A→B→A`。
+3. **路径安全** —— `TASK_ID_PATTERN` 校验 ID 格式 + `resolve()`/`is_relative_to` 防路径注入/逃逸。
 
 ## 技能库（s07 起）
 
