@@ -32,7 +32,7 @@
 | s07 | Skill loader（按需加载技能） | ✅ |
 | s08 | Context compaction（上下文压缩六件套） | ✅ |
 | s09 | Durable memory（持久记忆层） | ✅ |
-| s10 | Runtime prompt assembly（运行时组装 prompt） | ⬜ |
+| s10 | Runtime prompt assembly（运行时组装 prompt） | ✅ |
 | s11 | Retry strategy（重试策略） | ⬜ |
 | s12 | Task board（任务系统：依赖图 + 持久化） | ✅ |
 | s13–s20 | 后台执行 / 定时 / 团队 / 协议 / 自主认领 / worktree / MCP / 整合 | ⬜ |
@@ -60,6 +60,7 @@ python s08_context_compact.py   # 或任意一章
 | `s07_skill_loader.py` | s07 | 技能目录进 prompt，正文用 `load_skill` 按需注入（省 92% 上下文） |
 | `s08_context_compact.py` | s08 | 上下文压缩六件套（见下） |
 | `s09_memory_full.py` | s09 | 持久记忆层：文件仓库 + 索引 + 按需注入 + 提取 + 去重（见下） |
+| `s10_system_prompt.py` | s10 | 运行时组装 system prompt：PROMPT_SECTIONS 分段 + assemble/get_system_prompt + update_context（见下） |
 | `s12_task_system.py` | s12 | 任务系统：Task DAG（blockedBy 依赖 + owner 分工）+ .tasks/ 持久化 + 状态机（见下） |
 | `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
 
@@ -100,6 +101,22 @@ python s08_context_compact.py   # 或任意一章
 **两条加载路径（prompt cache 友好）**：索引（稳定）放 SYSTEM，正文（多变）放 user turn —— 稳定的放前面保住 cache 前缀，多变的放后面不破坏它。
 
 **两个踩过的坑**：① `str.format()` 撞上 prompt 里的 JSON 花括号 → `KeyError`，改用 `replace`；② 中文整段子串匹配失效（"内存管理用"匹配不到"内存泄漏"）→ 用 2 字 bigram 近似分词。
+
+## s10：System Prompt（运行时组装）
+
+**核心原则：prompt 是组装出来的，不是写死的。** 把硬编码的 SYSTEM 拆成 section，运行时按真实状态拼接。
+
+| 组件 | 机制 |
+|------|------|
+| `PROMPT_SECTIONS` | 四段字典：identity / tools / workspace / memory |
+| `assemble_system_prompt` | 始终 3 段 + 按需 memory 段（空行分隔） |
+| `get_system_prompt` | `json.dumps` 做 key，context 不变返回缓存 |
+| `update_context` | 查真实状态（文件/工具），不猜关键词 |
+
+**关键设计**：
+1. **tools 段动态生成**（`', '.join(enabled_tools)`），不写死 —— 工具变了 prompt 自动跟着变。
+2. **memory 段基于 `INDEX_FILE.exists()` 真实状态**，不是关键词匹配。
+3. **缓存 key 用 `json.dumps` 不用 `hash()`**（dict 不可哈希 + 字符串哈希进程随机化，不稳定）。
 
 ## s12：任务系统（Task System）
 
