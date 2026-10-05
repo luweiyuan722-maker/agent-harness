@@ -32,8 +32,10 @@
 | s07 | Skill loader（按需加载技能） | ✅ |
 | s08 | Context compaction（上下文压缩六件套） | ✅ |
 | s09 | Durable memory（持久记忆层） | ✅ |
-| s10 | Task system（任务系统：依赖图 + 持久化） | ✅ |
-| s11–s20 | 后台任务 / 定时 / 团队 / 协议 / worktree / MCP / 整合 | ⬜ |
+| s10 | Runtime prompt assembly（运行时组装 prompt） | ⬜ |
+| s11 | Retry strategy（重试策略） | ⬜ |
+| s12 | Task board（任务系统：依赖图 + 持久化） | ✅ |
+| s13–s20 | 后台执行 / 定时 / 团队 / 协议 / 自主认领 / worktree / MCP / 整合 | ⬜ |
 
 ## 运行
 
@@ -58,7 +60,7 @@ python s08_context_compact.py   # 或任意一章
 | `s07_skill_loader.py` | s07 | 技能目录进 prompt，正文用 `load_skill` 按需注入（省 92% 上下文） |
 | `s08_context_compact.py` | s08 | 上下文压缩六件套（见下） |
 | `s09_memory_full.py` | s09 | 持久记忆层：文件仓库 + 索引 + 按需注入 + 提取 + 去重（见下） |
-| `s10_task_system.py` | s10 | 任务系统：Task DAG（blockedBy 依赖 + owner 分工）+ .tasks/ 持久化 + 状态机（见下） |
+| `s12_task_system.py` | s12 | 任务系统：Task DAG（blockedBy 依赖 + owner 分工）+ .tasks/ 持久化 + 状态机（见下） |
 | `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
 
 ## s08：上下文压缩六件套
@@ -99,7 +101,9 @@ python s08_context_compact.py   # 或任意一章
 
 **两个踩过的坑**：① `str.format()` 撞上 prompt 里的 JSON 花括号 → `KeyError`，改用 `replace`；② 中文整段子串匹配失效（"内存管理用"匹配不到"内存泄漏"）→ 用 2 字 bigram 近似分词。
 
-## s10：任务系统（Task System）
+## s12：任务系统（Task System）
+
+> ⚠️ 章节编号：网站 learn.shareai.run 用 s12，GitHub 仓库用 s10_task_system（两套编号，内容相同）。
 
 **核心原则：大目标拆成小任务，排好序，持久化。** 相比 s05 TodoWrite，任务有了 ID、依赖（`blockedBy`）和分工（`owner`），并持久化到 `.tasks/{id}.json` 跨会话可恢复。
 

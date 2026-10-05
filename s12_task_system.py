@@ -1,6 +1,7 @@
-"""s10: Task System —— 从执行清单到可协调的任务状态
+"""s12: Task System —— 从执行清单到可协调的任务状态
+（网站 learn.shareai.run 编号 s12；GitHub 仓库为 s10_task_system）
 
-课程：learn-claudecode s10
+课程：learn-claudecode s12
 主旨：「大目标拆成小任务，排好序，持久化」—— 文件持久化的任务图（DAG），多 Agent 协作的基础。
 
 相比 s05 TodoWrite 的进化：
