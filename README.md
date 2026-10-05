@@ -33,7 +33,7 @@
 | s08 | Context compaction（上下文压缩六件套） | ✅ |
 | s09 | Durable memory（持久记忆层） | ✅ |
 | s10 | Runtime prompt assembly（运行时组装 prompt） | ✅ |
-| s11 | Retry strategy（重试策略） | ⬜ |
+| s11 | Retry strategy（重试策略） | ✅ |
 | s12 | Task board（任务系统：依赖图 + 持久化） | ✅ |
 | s13–s20 | 后台执行 / 定时 / 团队 / 协议 / 自主认领 / worktree / MCP / 整合 | ⬜ |
 
@@ -61,6 +61,7 @@ python s08_context_compact.py   # 或任意一章
 | `s08_context_compact.py` | s08 | 上下文压缩六件套（见下） |
 | `s09_memory_full.py` | s09 | 持久记忆层：文件仓库 + 索引 + 按需注入 + 提取 + 去重（见下） |
 | `s10_system_prompt.py` | s10 | 运行时组装 system prompt：PROMPT_SECTIONS 分段 + assemble/get_system_prompt + update_context（见下） |
+| `s11_retry_strategy.py` | s11 | 错误恢复：RecoveryState + 三判断函数 + 指数退避 + 三条恢复路径（见下） |
 | `s12_task_system.py` | s12 | 任务系统：Task DAG（blockedBy 依赖 + owner 分工）+ .tasks/ 持久化 + 状态机（见下） |
 | `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
 
@@ -117,6 +118,18 @@ python s08_context_compact.py   # 或任意一章
 1. **tools 段动态生成**（`', '.join(enabled_tools)`），不写死 —— 工具变了 prompt 自动跟着变。
 2. **memory 段基于 `INDEX_FILE.exists()` 真实状态**，不是关键词匹配。
 3. **缓存 key 用 `json.dumps` 不用 `hash()`**（dict 不可哈希 + 字符串哈希进程随机化，不稳定）。
+
+## s11：Error Recovery（错误恢复）
+
+**核心原则：错误不是终点，是重试的起点。** 把 LLM 调用包进 try/except，按错误类型走三条恢复路径。
+
+| 故障 | 触发 | 恢复 | 上限 |
+|------|------|------|------|
+| 输出截断 | `finish_reason == length` | 升级 max_tokens 8K→64K / 续写提示 | 升级 1 次 + 续写 3 次 |
+| 上下文超限 | `prompt_too_long` | reactive compact | 压缩 1 次 |
+| 临时故障 | 429 / 529 | 指数退避 + 抖动，连续 529 切备用模型 | 退避 10 次 |
+
+**设计哲学**：确定性故障（截断/超限）改条件重试 1 次就够；随机性故障（限流/过载）指数退避多次重试。判断标准 = **「重试能不能改变结果」**。`RecoveryState` 记账防死循环。
 
 ## s12：任务系统（Task System）
 
