@@ -38,7 +38,8 @@
 | s13 | Background execution（后台执行） | ✅ |
 | s14 | Cron scheduler（定时任务） | ✅ |
 | s15 | Agent Teams（多 Agent 协作） | ✅ |
-| s16–s20 | 协议 / 自主认领 / worktree / MCP / 整合 | ⬜ |
+| s16 | Team Protocols（团队协议） | ✅ |
+| s17–s20 | 自主认领 / worktree / MCP / 整合 | ⬜ |
 
 ## 运行
 
@@ -69,6 +70,9 @@ python s08_context_compact.py   # 或任意一章
 | `s13_background_tasks.py` | s13 | 后台任务：慢操作 daemon 线程 + 占位 tool_result + 通知注入（见下） |
 | `s14_cron_scheduler.py` | s14 | 定时任务：cron 调度线程 + 队列 + 队列处理器 + durable 持久化（见下） |
 | `s15_agent_teams.py` | s15 | 多 Agent 协作：MessageBus 文件收件箱 + 队友线程 + inbox 注入（见下） |
+| `s16_team_protocols.py` | s16 | 团队协议：request_id 握手 + 状态机 + 类型校验（见下） |
+| `test_s16_protocols.py` | s16 | 协议测试：match_response 三校验 + 完整关机握手 |
+| `demo_protocols.py` | s16 | 完整演示：干活 → idle → 关机握手 → approved |
 | `test_s15_teams.py` | s15 | MessageBus 测试：send/read/消费式/隔离/并发写锁 |
 | `demo_teams.py` | s15 | 完整链路演示：派活 → 队友干 → summary → 收件箱 |
 | `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
@@ -181,9 +185,24 @@ python s08_context_compact.py   # 或任意一章
 
 子 Agent（s06）→ 队友（s15）：一次性 → 多轮；只回传结论 → 异步收件箱；上下文隔离 → 消息共享。
 
-## s16–s20（待学）
+## s16：团队协议（Team Protocols）
 
-协议 / 自主认领 / worktree / MCP / 整合。
+**核心原则：队友之间要有约定。** request-response 模式驱动协商，结构化握手。
+
+| 组件 | 机制 |
+|------|------|
+| `ProtocolState` | 请求状态：request_id / type / sender / target / status / payload |
+| `request_id` | 贯穿全链路的关联键：请求带出去，回复带回来 |
+| `match_response` | 三校验：ID 存在 + 类型匹配（防串扰）+ 状态 pending（防重复） |
+| `dispatch` | 队友按消息类型路由（shutdown_request → 回复并退出） |
+| 状态机 | pending → approved / rejected（单向） |
+| idle loop | 队友干完不退出，轮询收件箱等 shutdown |
+
+两种协议：shutdown（Lead→队友 关机握手）、plan_approval（队友→Lead 计划审批）。
+
+## s17–s20（待学）
+
+自主认领 / worktree / MCP / 整合。
 
 ## s12：任务系统（Task System）
 
