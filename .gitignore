@@ -14,3 +14,6 @@ memory/
 
 # s10 运行时产物：任务记录（.tasks/{id}.json，跨会话可恢复，不应入库）
 .tasks/
+
+# s14 运行时产物：durable 定时任务定义（跨重启恢复，属用户数据，不应入库）
+.scheduled_tasks.json

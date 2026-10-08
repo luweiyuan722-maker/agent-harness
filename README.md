@@ -36,7 +36,8 @@
 | s11 | Retry strategy（重试策略） | ✅ |
 | s12 | Task board（任务系统：依赖图 + 持久化） | ✅ |
 | s13 | Background execution（后台执行） | ✅ |
-| s14–s20 | 定时 / 团队 / 协议 / 自主认领 / worktree / MCP / 整合 | ⬜ |
+| s14 | Cron scheduler（定时任务） | ✅ |
+| s15–s20 | 团队 / 协议 / 自主认领 / worktree / MCP / 整合 | ⬜ |
 
 ## 运行
 
@@ -65,6 +66,7 @@ python s08_context_compact.py   # 或任意一章
 | `s11_retry_strategy.py` | s11 | 错误恢复：RecoveryState + 三判断函数 + 指数退避 + 三条恢复路径（见下） |
 | `s12_task_system.py` | s12 | 任务系统：Task DAG（blockedBy 依赖 + owner 分工）+ .tasks/ 持久化 + 状态机（见下） |
 | `s13_background_tasks.py` | s13 | 后台任务：慢操作 daemon 线程 + 占位 tool_result + 通知注入（见下） |
+| `s14_cron_scheduler.py` | s14 | 定时任务：cron 调度线程 + 队列 + 队列处理器 + durable 持久化（见下） |
 | `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
 
 ## s08：上下文压缩六件套
@@ -150,9 +152,21 @@ python s08_context_compact.py   # 或任意一章
 3. **通知不复用 tool_use_id** —— 后台完成是独立事件，原 tool_call 已用占位回复过。
 4. **`daemon=True`** —— 进程退出时后台线程跟着死，不卡住退出。
 
-## s14–s20（待学）
+## s14：定时任务（Cron Scheduler）
 
-定时 / 团队 / 协议 / 自主认领 / worktree / MCP / 整合。
+**核心原则：按时间表生产工作，调度与执行解耦。** 独立 daemon 调度线程每秒轮询，时间到了塞进 `cron_queue`，队列处理器在 Agent 空闲时自动交付。
+
+| 组件 | 机制 |
+|------|------|
+| `CronJob` | dataclass 五字段：id / cron / prompt / recurring / durable |
+| `cron_matches` | 五段式匹配，分钟/小时/月 AND，DOM/DOW 同时约束时 OR（Vixie cron 语义） |
+| `cron_scheduler_loop` | daemon 线程每秒轮询 + minute_marker 防重复触发 + 单 job try/except |
+| `queue_processor_loop` | 队列非空 + agent_lock 空闲 → 自动拉起一轮 |
+| `durable` | .scheduled_tasks.json 持久化，启动 load 恢复（坏任务跳过） |
+
+## s15–s20（待学）
+
+团队 / 协议 / 自主认领 / worktree / MCP / 整合。
 
 ## s12：任务系统（Task System）
 
