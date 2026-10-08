@@ -17,3 +17,6 @@ memory/
 
 # s14 运行时产物：durable 定时任务定义（跨重启恢复，属用户数据，不应入库）
 .scheduled_tasks.json
+
+# s15 运行时产物：团队收件箱（.mailboxes/*.jsonl，队友通信消息，不应入库）
+.mailboxes/

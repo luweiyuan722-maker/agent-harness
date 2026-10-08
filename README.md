@@ -37,7 +37,8 @@
 | s12 | Task board（任务系统：依赖图 + 持久化） | ✅ |
 | s13 | Background execution（后台执行） | ✅ |
 | s14 | Cron scheduler（定时任务） | ✅ |
-| s15–s20 | 团队 / 协议 / 自主认领 / worktree / MCP / 整合 | ⬜ |
+| s15 | Agent Teams（多 Agent 协作） | ✅ |
+| s16–s20 | 协议 / 自主认领 / worktree / MCP / 整合 | ⬜ |
 
 ## 运行
 
@@ -67,6 +68,9 @@ python s08_context_compact.py   # 或任意一章
 | `s12_task_system.py` | s12 | 任务系统：Task DAG（blockedBy 依赖 + owner 分工）+ .tasks/ 持久化 + 状态机（见下） |
 | `s13_background_tasks.py` | s13 | 后台任务：慢操作 daemon 线程 + 占位 tool_result + 通知注入（见下） |
 | `s14_cron_scheduler.py` | s14 | 定时任务：cron 调度线程 + 队列 + 队列处理器 + durable 持久化（见下） |
+| `s15_agent_teams.py` | s15 | 多 Agent 协作：MessageBus 文件收件箱 + 队友线程 + inbox 注入（见下） |
+| `test_s15_teams.py` | s15 | MessageBus 测试：send/read/消费式/隔离/并发写锁 |
+| `demo_teams.py` | s15 | 完整链路演示：派活 → 队友干 → summary → 收件箱 |
 | `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
 
 ## s08：上下文压缩六件套
@@ -164,9 +168,22 @@ python s08_context_compact.py   # 或任意一章
 | `queue_processor_loop` | 队列非空 + agent_lock 空闲 → 自动拉起一轮 |
 | `durable` | .scheduled_tasks.json 持久化，启动 load 恢复（坏任务跳过） |
 
-## s15–s20（待学）
+## s15：多 Agent 协作（Agent Teams）
 
-团队 / 协议 / 自主认领 / worktree / MCP / 整合。
+**核心原则：一个搞不定，组队来。** 文件收件箱 + 队友线程，多 Agent 异步通信。
+
+| 组件 | 机制 |
+|------|------|
+| `MessageBus` | .jsonl 文件收件箱：append 发消息 + read/unlink 消费式读（加锁防并发写） |
+| `spawn_teammate_thread` | 队友 daemon 线程：自己的 system/messages/简化工具集 + 10 轮任务预算 |
+| inbox 注入 | Lead 每轮读收件箱，队友结果作为 `[Inbox]` 注入 history |
+| 隔离 + 截断 | 队友上下文与 Lead 隔离，`messages[-20:]` 截断，不塞 Lead 的几百条历史 |
+
+子 Agent（s06）→ 队友（s15）：一次性 → 多轮；只回传结论 → 异步收件箱；上下文隔离 → 消息共享。
+
+## s16–s20（待学）
+
+协议 / 自主认领 / worktree / MCP / 整合。
 
 ## s12：任务系统（Task System）
 
