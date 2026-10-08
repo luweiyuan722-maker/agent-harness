@@ -35,7 +35,8 @@
 | s10 | Runtime prompt assembly（运行时组装 prompt） | ✅ |
 | s11 | Retry strategy（重试策略） | ✅ |
 | s12 | Task board（任务系统：依赖图 + 持久化） | ✅ |
-| s13–s20 | 后台执行 / 定时 / 团队 / 协议 / 自主认领 / worktree / MCP / 整合 | ⬜ |
+| s13 | Background execution（后台执行） | ✅ |
+| s14–s20 | 定时 / 团队 / 协议 / 自主认领 / worktree / MCP / 整合 | ⬜ |
 
 ## 运行
 
@@ -63,6 +64,7 @@ python s08_context_compact.py   # 或任意一章
 | `s10_system_prompt.py` | s10 | 运行时组装 system prompt：PROMPT_SECTIONS 分段 + assemble/get_system_prompt + update_context（见下） |
 | `s11_retry_strategy.py` | s11 | 错误恢复：RecoveryState + 三判断函数 + 指数退避 + 三条恢复路径（见下） |
 | `s12_task_system.py` | s12 | 任务系统：Task DAG（blockedBy 依赖 + owner 分工）+ .tasks/ 持久化 + 状态机（见下） |
+| `s13_background_tasks.py` | s13 | 后台任务：慢操作 daemon 线程 + 占位 tool_result + 通知注入（见下） |
 | `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
 
 ## s08：上下文压缩六件套
@@ -130,6 +132,27 @@ python s08_context_compact.py   # 或任意一章
 | 临时故障 | 429 / 529 | 指数退避 + 抖动，连续 529 切备用模型 | 退避 10 次 |
 
 **设计哲学**：确定性故障（截断/超限）改条件重试 1 次就够；随机性故障（限流/过载）指数退避多次重试。判断标准 = **「重试能不能改变结果」**。`RecoveryState` 记账防死循环。
+
+## s13：后台任务（Background Tasks）
+
+**核心原则：慢操作丢后台，Agent 继续处理。** 洗衣机类比——`npm install` 不该让 Agent 干等 10 分钟。
+
+| 组件 | 机制 |
+|------|------|
+| `should_run_background` | 模型显式请求优先 + 关键词启发式兜底 |
+| `start_background_task` | daemon 线程执行，返回 bg_id |
+| `collect_background_results` | 收集完成的，格式化为 `<task_notification>` |
+| 循环集成 | 慢操作占位 tool_result，快操作同步，通知每轮注入 |
+
+**关键设计**：
+1. **占位 tool_result** —— 慢操作立刻回 `[Background task bg_0001 started]`，满足"一个 tool_use 一个 tool_result"配对，LLM 知道还在跑。
+2. **通知是"系统通知"不是"用户回复"** —— 用 `<task_notification>` XML 标签标记语义，模型靠标签区分。
+3. **通知不复用 tool_use_id** —— 后台完成是独立事件，原 tool_call 已用占位回复过。
+4. **`daemon=True`** —— 进程退出时后台线程跟着死，不卡住退出。
+
+## s14–s20（待学）
+
+定时 / 团队 / 协议 / 自主认领 / worktree / MCP / 整合。
 
 ## s12：任务系统（Task System）
 
