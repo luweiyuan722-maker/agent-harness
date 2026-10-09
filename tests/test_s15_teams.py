@@ -2,7 +2,7 @@ import importlib.util
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
-    "s15", "/Users/shikanoko/Desktop/agent_harness/s15_agent_teams.py")
+    "s15", "/Users/shikanoko/Desktop/agent_harness/lessons/s15_agent_teams.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

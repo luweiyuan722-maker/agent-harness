@@ -4,7 +4,7 @@ import threading
 import json
 
 spec = importlib.util.spec_from_file_location(
-    "s17", "/Users/shikanoko/Desktop/agent_harness/s17_autonomous_agents.py")
+    "s17", "/Users/shikanoko/Desktop/agent_harness/lessons/s17_autonomous_agents.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

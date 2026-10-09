@@ -3,7 +3,7 @@ import time
 import shutil
 
 spec = importlib.util.spec_from_file_location(
-    "s16", "/Users/shikanoko/Desktop/agent_harness/s16_team_protocols.py")
+    "s16", "/Users/shikanoko/Desktop/agent_harness/lessons/s16_team_protocols.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

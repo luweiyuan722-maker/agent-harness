@@ -51,33 +51,33 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env        # 填入你的 DEEPSEEK_API_KEY
-python s08_context_compact.py   # 或任意一章
+python lessons/s08_context_compact.py   # 或任意一章
 ```
 
 ## 各章文件
 
 | 文件 | 章节 | 核心机制 |
 |---|---|---|
-| `s01_agent_loop.py` | s01 | 最小循环：调模型 → 执行工具 → 结果喂回 |
-| `s02_tool_dispatch.py` | s02 | 工具列表单一数据源 + 名字→函数分派表 |
-| `s03_permission_gate.py` | s03 | 危险工具执行前的决策点（拒绝时喂回，不中断） |
-| `s04_lifecycle_hooks.py` | s04 | 钩子系统：日志/计时挂在循环周围，不写进循环 |
-| `s05_todo_manager.py` | s05 | 计划存在循环外的变量，`todo_write` 工具写入 + 每轮注入 prompt |
-| `s06_subagent.py` | s06 | 子 agent = 独立循环 + 独立 messages，包装成 `delegate` 工具（主/子工具分离防递归） |
-| `s07_skill_loader.py` | s07 | 技能目录进 prompt，正文用 `load_skill` 按需注入（省 92% 上下文） |
-| `s08_context_compact.py` | s08 | 上下文压缩六件套（见下） |
-| `s09_memory_full.py` | s09 | 持久记忆层：文件仓库 + 索引 + 按需注入 + 提取 + 去重（见下） |
-| `s10_system_prompt.py` | s10 | 运行时组装 system prompt：PROMPT_SECTIONS 分段 + assemble/get_system_prompt + update_context（见下） |
-| `s11_retry_strategy.py` | s11 | 错误恢复：RecoveryState + 三判断函数 + 指数退避 + 三条恢复路径（见下） |
-| `s12_task_system.py` | s12 | 任务系统：Task DAG（blockedBy 依赖 + owner 分工）+ .tasks/ 持久化 + 状态机（见下） |
-| `s13_background_tasks.py` | s13 | 后台任务：慢操作 daemon 线程 + 占位 tool_result + 通知注入（见下） |
-| `s14_cron_scheduler.py` | s14 | 定时任务：cron 调度线程 + 队列 + 队列处理器 + durable 持久化（见下） |
-| `s15_agent_teams.py` | s15 | 多 Agent 协作：MessageBus 文件收件箱 + 队友线程 + inbox 注入（见下） |
-| `s16_team_protocols.py` | s16 | 团队协议：request_id 握手 + 状态机 + 类型校验（见下） |
-| `s17_autonomous_agents.py` | s17 | 自主认领：idle_poll 扫任务板 + claim 每任务锁 + 三阶段循环（见下） |
-| `s18_worktree_isolation.py` | s18 | worktree 隔离：git worktree + 任务绑定 + cwd 切换（见下） |
-| `s19_mcp_tools.py` | s19 | MCP 插件：真实连接官方 filesystem server + 发现 + 调用（见下） |
-| `s20_comprehensive.py` | s20 | 整合：所有机制挂同一个 while True 循环（见下） |
+| `lessons/s01_agent_loop.py` | s01 | 最小循环：调模型 → 执行工具 → 结果喂回 |
+| `lessons/s02_tool_dispatch.py` | s02 | 工具列表单一数据源 + 名字→函数分派表 |
+| `lessons/s03_permission_gate.py` | s03 | 危险工具执行前的决策点（拒绝时喂回，不中断） |
+| `lessons/s04_lifecycle_hooks.py` | s04 | 钩子系统：日志/计时挂在循环周围，不写进循环 |
+| `lessons/s05_todo_manager.py` | s05 | 计划存在循环外的变量，`todo_write` 工具写入 + 每轮注入 prompt |
+| `lessons/s06_subagent.py` | s06 | 子 agent = 独立循环 + 独立 messages，包装成 `delegate` 工具（主/子工具分离防递归） |
+| `lessons/s07_skill_loader.py` | s07 | 技能目录进 prompt，正文用 `load_skill` 按需注入（省 92% 上下文） |
+| `lessons/s08_context_compact.py` | s08 | 上下文压缩六件套（见下） |
+| `lessons/s09_memory_full.py` | s09 | 持久记忆层：文件仓库 + 索引 + 按需注入 + 提取 + 去重（见下） |
+| `lessons/s10_system_prompt.py` | s10 | 运行时组装 system prompt：PROMPT_SECTIONS 分段 + assemble/get_system_prompt + update_context（见下） |
+| `lessons/s11_retry_strategy.py` | s11 | 错误恢复：RecoveryState + 三判断函数 + 指数退避 + 三条恢复路径（见下） |
+| `lessons/s12_task_system.py` | s12 | 任务系统：Task DAG（blockedBy 依赖 + owner 分工）+ .tasks/ 持久化 + 状态机（见下） |
+| `lessons/s13_background_tasks.py` | s13 | 后台任务：慢操作 daemon 线程 + 占位 tool_result + 通知注入（见下） |
+| `lessons/s14_cron_scheduler.py` | s14 | 定时任务：cron 调度线程 + 队列 + 队列处理器 + durable 持久化（见下） |
+| `lessons/s15_agent_teams.py` | s15 | 多 Agent 协作：MessageBus 文件收件箱 + 队友线程 + inbox 注入（见下） |
+| `lessons/s16_team_protocols.py` | s16 | 团队协议：request_id 握手 + 状态机 + 类型校验（见下） |
+| `lessons/s17_autonomous_agents.py` | s17 | 自主认领：idle_poll 扫任务板 + claim 每任务锁 + 三阶段循环（见下） |
+| `lessons/s18_worktree_isolation.py` | s18 | worktree 隔离：git worktree + 任务绑定 + cwd 切换（见下） |
+| `lessons/s19_mcp_tools.py` | s19 | MCP 插件：真实连接官方 filesystem server + 发现 + 调用（见下） |
+| `harness.py` | s20 | 整合：所有机制挂同一个 while True 循环（见下） |
 | `tests/test_s17_autonomous.py` | s17 | 测试：scan 三条件 / claim / 并发抢锁 / 依赖检查 |
 | `demos/demo_autonomous.py` | s17 | 完整演示：建任务 → 队友自动认领 → 干活 → summary |
 | `tests/test_s16_protocols.py` | s16 | 协议测试：match_response 三校验 + 完整关机握手 |

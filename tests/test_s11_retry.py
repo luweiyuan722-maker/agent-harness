@@ -2,7 +2,7 @@ import importlib.util
 from langchain_core.messages import HumanMessage, ToolMessage
 
 spec = importlib.util.spec_from_file_location(
-    "s11", "/Users/shikanoko/Desktop/agent_harness/s11_retry_strategy.py")
+    "s11", "/Users/shikanoko/Desktop/agent_harness/lessons/s11_retry_strategy.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

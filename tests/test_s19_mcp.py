@@ -2,7 +2,7 @@ import importlib.util
 import json
 
 spec = importlib.util.spec_from_file_location(
-    "s19", "/Users/shikanoko/Desktop/agent_harness/s19_mcp_tools.py")
+    "s19", "/Users/shikanoko/Desktop/agent_harness/lessons/s19_mcp_tools.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

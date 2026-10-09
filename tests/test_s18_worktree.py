@@ -2,7 +2,7 @@ import importlib.util
 import shutil
 
 spec = importlib.util.spec_from_file_location(
-    "s18", "/Users/shikanoko/Desktop/agent_harness/s18_worktree_isolation.py")
+    "s18", "/Users/shikanoko/Desktop/agent_harness/lessons/s18_worktree_isolation.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

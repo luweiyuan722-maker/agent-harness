@@ -2,7 +2,7 @@ import importlib.util
 import time
 
 spec = importlib.util.spec_from_file_location(
-    "s13", "/Users/shikanoko/Desktop/agent_harness/s13_Background_Tasks.py")
+    "s13", "/Users/shikanoko/Desktop/agent_harness/lessons/s13_Background_Tasks.py")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
