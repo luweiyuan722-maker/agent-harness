@@ -39,7 +39,8 @@
 | s14 | Cron scheduler（定时任务） | ✅ |
 | s15 | Agent Teams（多 Agent 协作） | ✅ |
 | s16 | Team Protocols（团队协议） | ✅ |
-| s17–s20 | 自主认领 / worktree / MCP / 整合 | ⬜ |
+| s17 | Autonomous Agents（自主认领） | ✅ |
+| s18–s20 | worktree / MCP / 整合 | ⬜ |
 
 ## 运行
 
@@ -71,6 +72,9 @@ python s08_context_compact.py   # 或任意一章
 | `s14_cron_scheduler.py` | s14 | 定时任务：cron 调度线程 + 队列 + 队列处理器 + durable 持久化（见下） |
 | `s15_agent_teams.py` | s15 | 多 Agent 协作：MessageBus 文件收件箱 + 队友线程 + inbox 注入（见下） |
 | `s16_team_protocols.py` | s16 | 团队协议：request_id 握手 + 状态机 + 类型校验（见下） |
+| `s17_autonomous_agents.py` | s17 | 自主认领：idle_poll 扫任务板 + claim 每任务锁 + 三阶段循环（见下） |
+| `test_s17_autonomous.py` | s17 | 测试：scan 三条件 / claim / 并发抢锁 / 依赖检查 |
+| `demo_autonomous.py` | s17 | 完整演示：建任务 → 队友自动认领 → 干活 → summary |
 | `test_s16_protocols.py` | s16 | 协议测试：match_response 三校验 + 完整关机握手 |
 | `demo_protocols.py` | s16 | 完整演示：干活 → idle → 关机握手 → approved |
 | `test_s15_teams.py` | s15 | MessageBus 测试：send/read/消费式/隔离/并发写锁 |
@@ -200,9 +204,23 @@ python s08_context_compact.py   # 或任意一章
 
 两种协议：shutdown（Lead→队友 关机握手）、plan_approval（队友→Lead 计划审批）。
 
-## s17–s20（待学）
+## s17：自主认领（Autonomous Agents）
 
-自主认领 / worktree / MCP / 整合。
+**核心原则：自己看板，自己认领。** 队友空闲时轮询任务板，发现未认领任务就 claim，不依赖 Lead 分配。
+
+| 组件 | 机制 |
+|------|------|
+| `scan_unclaimed_tasks` | 三条件：pending + 无 owner + 依赖已完成（can_start） |
+| `claim_task` | 每任务一把锁 + owner 检查，锁内完成读-检查-改-写（防并发抢） |
+| `idle_poll` | inbox 优先 + 任务板其次，返回 work/shutdown/timeout |
+| 三阶段循环 | WORK（≤10 轮）→ IDLE（5s 轮询，60s 超时）→ SHUTDOWN |
+| 任务板 vs 队列 | 任务板是状态存储（改状态不删），收件箱是队列（读走删） |
+
+两个坑：① LLM 可能绕过 harness 的 claim 直接 complete（complete_task 补 owner 兜底）；② 全局锁串行化 → 每任务一把锁（_locks_guard 保护锁字典本身）。
+
+## s18–s20（待学）
+
+worktree / MCP / 整合。
 
 ## s12：任务系统（Task System）
 
