@@ -78,13 +78,13 @@ python s08_context_compact.py   # 或任意一章
 | `s18_worktree_isolation.py` | s18 | worktree 隔离：git worktree + 任务绑定 + cwd 切换（见下） |
 | `s19_mcp_tools.py` | s19 | MCP 插件：真实连接官方 filesystem server + 发现 + 调用（见下） |
 | `s20_comprehensive.py` | s20 | 整合：所有机制挂同一个 while True 循环（见下） |
-| `test_s17_autonomous.py` | s17 | 测试：scan 三条件 / claim / 并发抢锁 / 依赖检查 |
-| `demo_autonomous.py` | s17 | 完整演示：建任务 → 队友自动认领 → 干活 → summary |
-| `test_s16_protocols.py` | s16 | 协议测试：match_response 三校验 + 完整关机握手 |
-| `demo_protocols.py` | s16 | 完整演示：干活 → idle → 关机握手 → approved |
-| `test_s15_teams.py` | s15 | MessageBus 测试：send/read/消费式/隔离/并发写锁 |
-| `demo_teams.py` | s15 | 完整链路演示：派活 → 队友干 → summary → 收件箱 |
-| `demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
+| `tests/test_s17_autonomous.py` | s17 | 测试：scan 三条件 / claim / 并发抢锁 / 依赖检查 |
+| `demos/demo_autonomous.py` | s17 | 完整演示：建任务 → 队友自动认领 → 干活 → summary |
+| `tests/test_s16_protocols.py` | s16 | 协议测试：match_response 三校验 + 完整关机握手 |
+| `demos/demo_protocols.py` | s16 | 完整演示：干活 → idle → 关机握手 → approved |
+| `tests/test_s15_teams.py` | s15 | MessageBus 测试：send/read/消费式/隔离/并发写锁 |
+| `demos/demo_teams.py` | s15 | 完整链路演示：派活 → 队友干 → summary → 收件箱 |
+| `demos/demo_skill_trace.py` | — | 演示：技能调用留下的 4 处痕迹 |
 
 ## s08：上下文压缩六件套
 
