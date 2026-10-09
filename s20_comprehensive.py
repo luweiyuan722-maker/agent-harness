@@ -82,16 +82,64 @@ def trigger_hooks(point, *args):
     return None
 
 
+# ── 具体 hook 实现：日志 + 计时 + 统计 + 大输出告警 ──
+_session_start = None
+_tool_call_count = 0
+
+
+def log_user_input(query):
+    global _session_start
+    _session_start = time.time()
+    print(f"      📝 [UserPromptSubmit] {str(query)[:60]}")
+
+
+def log_pre_tool(tc):
+    print(f"      🔧 [PreToolUse] {tc.get('name')} {tool_annotation(tc.get('name', ''))}")
+
+
+def log_post_tool(tc, result):
+    global _tool_call_count
+    _tool_call_count += 1
+    size = len(str(result))
+    if size > 5000:
+        print(f"      ⚠️ [PostToolUse] {tc.get('name')} 输出 {size:,} 字符（较大）")
+
+
+def log_stop(content):
+    elapsed = time.time() - _session_start if _session_start else 0
+    print(f"      🏁 [Stop] 完成，耗时 {elapsed:.1f}s，工具调用 {_tool_call_count} 次")
+
+
+register_hook("UserPromptSubmit", log_user_input)
+register_hook("PreToolUse", log_pre_tool)
+register_hook("PostToolUse", log_post_tool)
+register_hook("Stop", log_stop)
+
+
 # ═══════════ s03 权限（挂在 PreToolUse）═══════════
 DANGEROUS_COMMANDS = ["rm -rf", "mkfs", "shutdown", "fork bomb", ":(){:|:&};:"]
 
+# 工具分类：destructive（破坏性）vs readOnly（只读）。用于权限决策和描述标注。
+DESTRUCTIVE_TOOLS = {"run_bash", "write_file", "complete_task", "remove_worktree",
+                     "cancel_cron", "create_worktree", "claim_task", "update_task",
+                     "schedule_cron", "spawn_teammate", "request_shutdown", "review_plan",
+                     "delegate", "mcp_call"}
+
+
+def tool_annotation(tool_name: str) -> str:
+    """返回工具标注：(destructive) 或 (readOnly)。"""
+    return "(destructive)" if tool_name in DESTRUCTIVE_TOOLS else "(readOnly)"
+
 
 def permission_check(tc):
-    if tc.get("name") == "run_bash":
+    """权限决策点（s03）：危险命令硬拦截；destructive 工具标注。
+    （教学版 destructive 放行，真实 CC 会让用户确认。）"""
+    name = tc.get("name")
+    if name == "run_bash":
         cmd = tc.get("args", {}).get("command", "")
         for d in DANGEROUS_COMMANDS:
             if d in cmd:
-                return f"拒绝：危险命令 {d!r}"
+                return f"[permission denied] 危险命令 {d!r} (destructive)"
     return ""
 
 
