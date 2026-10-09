@@ -1116,33 +1116,112 @@ def cancel_cron(job_id: str) -> str:
     return f"已取消 {job_id}" if j else f"无 {job_id}"
 
 
+IDLE_POLL_INTERVAL = 5
+IDLE_TIMEOUT = 60
+
+
+def idle_poll(agent_name, messages):
+    """队友空闲轮询：inbox 优先 + 任务板其次，返回 work/shutdown/timeout。"""
+    for _ in range(IDLE_TIMEOUT // IDLE_POLL_INTERVAL):
+        time.sleep(IDLE_POLL_INTERVAL)
+        # ① inbox 优先（可能有 shutdown_request 等协议消息）
+        inbox = BUS.read_inbox(agent_name)
+        if inbox:
+            for msg in inbox:
+                if msg.get("type") == "shutdown_request":
+                    BUS.send(agent_name, "lead", "已关机", "shutdown_response",
+                             {"request_id": msg.get("metadata", {}).get("request_id", "")})
+                    return "shutdown"
+            messages.append(HumanMessage(content=f"[Inbox]{json.dumps(inbox)}"))
+            return "work"
+        # ② 任务板其次：扫到可认领任务就 claim
+        unclaimed = scan_unclaimed_tasks()
+        if unclaimed:
+            task = unclaimed[0]
+            result = claim_task.invoke({"task_id": task.id})
+            if "Claimed" in result:
+                if task.worktree:
+                    _current.cwd = str(WORKTREES_DIR / task.worktree)   # worktree 切换 cwd
+                messages.append(HumanMessage(
+                    content=f"认领了任务 {task.id}：{task.subject}。"
+                            f"完成后调 complete_task，task_id 填 {task.id}。"))
+                return "work"
+    return "timeout"
+
+
+@tool
+def submit_plan(plan: str) -> str:
+    """提交计划给 Lead 审批（高风险操作先审后做）。"""
+    name = getattr(_current, "name", "teammate")
+    req_id = new_request_id()
+    with protocol_lock:
+        pending_requests[req_id] = ProtocolState(
+            request_id=req_id, type="plan_approval", sender=name, target="lead",
+            status="pending", payload=plan)
+    BUS.send(name, "lead", plan, "plan_approval_request", {"request_id": req_id})
+    return f"计划已提交（{req_id}），等待 Lead 审批"
+
+
+def _send_summary(name, summaries):
+    content = ("\n".join(f"任务 {i+1}：{s}" for i, s in enumerate(summaries))
+               if summaries else "（未完成）")
+    BUS.send(name, "lead", content, "result")
+    print(f"      🤝 [{name}] 完成：{content[:60]}")
+
+
 @tool
 def spawn_teammate(name: str, role: str, prompt: str) -> str:
-    """启动队友线程（持久，异步收件箱）。"""
+    """启动队友线程（完整三阶段：WORK→IDLE→SHUTDOWN，自组织认领任务）。"""
     def run():
         _current.name = name
+        system = f"You are '{name}', a {role}. Use tools to complete tasks."
         msgs = [HumanMessage(content=prompt)]
-        sub_llm = llm.bind_tools([read_file, write_file, run_bash, send_message])
-        sub_tools = {t.name: t for t in [read_file, write_file, run_bash, send_message]}
-        resp = None
-        for _ in range(10):
-            inbox = BUS.read_inbox(name)
-            if inbox:
-                for m in inbox:
-                    if m.get("type") == "shutdown_request":
+        sub_tool_list = [read_file, write_file, run_bash, send_message,
+                         list_tasks, claim_task, complete_task, submit_plan]
+        sub_llm = llm.bind_tools(sub_tool_list)
+        sub_map = {t.name: t for t in sub_tool_list}
+        summaries = []
+
+        while True:
+            # ── WORK 阶段（最多 10 轮 LLM）──
+            for _ in range(10):
+                # 身份重注入（压缩后 messages 太短，重新注入身份）
+                if len(msgs) <= 3:
+                    msgs.insert(0, HumanMessage(
+                        content=f"<identity>You are '{name}', role: {role}. Continue.</identity>"))
+                # 读 inbox + 处理协议
+                inbox = BUS.read_inbox(name)
+                for msg in inbox:
+                    if msg.get("type") == "shutdown_request":
                         BUS.send(name, "lead", "已关机", "shutdown_response",
-                                 {"request_id": m.get("metadata", {}).get("request_id", "")})
+                                 {"request_id": msg.get("metadata", {}).get("request_id", "")})
+                        _send_summary(name, summaries)
                         return
-                msgs.append(HumanMessage(content=f"[Inbox]{json.dumps(inbox)}"))
-            resp = sub_llm.invoke([SystemMessage(content=f"You are {name}, a {role}.")] + msgs)
-            msgs.append(resp)
-            if not resp.tool_calls:
-                break
-            for tc in resp.tool_calls:
-                r = sub_tools[tc["name"]].invoke(tc["args"])
-                msgs.append(ToolMessage(content=str(r), tool_call_id=tc["id"]))
-        summary = resp.content if (resp and not resp.tool_calls) else "（未完成）"
-        BUS.send(name, "lead", summary, "result")
+                    if msg.get("type") == "plan_approval_response":
+                        meta = msg.get("metadata", {})
+                        match_response("plan_approval_response", meta.get("request_id", ""),
+                                       meta.get("approve", False))
+                        msgs.append(HumanMessage(
+                            content="[Plan approved，继续执行]" if meta.get("approve")
+                            else "[Plan rejected，修正后重新提交]"))
+                    else:
+                        msgs.append(HumanMessage(content=f"[Inbox]{json.dumps(msg)}"))
+                # 调 LLM
+                resp = sub_llm.invoke([SystemMessage(content=system)] + msgs)
+                msgs.append(resp)
+                if not resp.tool_calls:
+                    summaries.append(resp.content)
+                    break
+                for tc in resp.tool_calls:
+                    r = sub_map[tc["name"]].invoke(tc["args"])
+                    msgs.append(ToolMessage(content=str(r), tool_call_id=tc["id"]))
+
+            # ── IDLE 阶段（轮询找活）──
+            result = idle_poll(name, msgs)
+            if result in ("shutdown", "timeout"):
+                _send_summary(name, summaries)
+                return
+            # result == "work" → 回 WORK 继续干活
 
     threading.Thread(target=run, daemon=True).start()
     return f"已启动队友 {name}（{role}）"
