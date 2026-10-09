@@ -3,3 +3,4 @@
 langchain-openai==1.6.3
 langchain-core==1.6.4
 python-dotenv==1.2.3
+mcp==1.29.1

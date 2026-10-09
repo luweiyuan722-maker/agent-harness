@@ -40,7 +40,9 @@
 | s15 | Agent Teams（多 Agent 协作） | ✅ |
 | s16 | Team Protocols（团队协议） | ✅ |
 | s17 | Autonomous Agents（自主认领） | ✅ |
-| s18–s20 | worktree / MCP / 整合 | ⬜ |
+| s18 | Worktree isolation（工作区隔离） | ✅ |
+| s19 | MCP Tool Bridge（插件） | ✅ |
+| s20 | Comprehensive Agent Turn（整合） | ✅ |
 
 ## 运行
 
@@ -73,6 +75,9 @@ python s08_context_compact.py   # 或任意一章
 | `s15_agent_teams.py` | s15 | 多 Agent 协作：MessageBus 文件收件箱 + 队友线程 + inbox 注入（见下） |
 | `s16_team_protocols.py` | s16 | 团队协议：request_id 握手 + 状态机 + 类型校验（见下） |
 | `s17_autonomous_agents.py` | s17 | 自主认领：idle_poll 扫任务板 + claim 每任务锁 + 三阶段循环（见下） |
+| `s18_worktree_isolation.py` | s18 | worktree 隔离：git worktree + 任务绑定 + cwd 切换（见下） |
+| `s19_mcp_tools.py` | s19 | MCP 插件：真实连接官方 filesystem server + 发现 + 调用（见下） |
+| `s20_comprehensive.py` | s20 | 整合：所有机制挂同一个 while True 循环（见下） |
 | `test_s17_autonomous.py` | s17 | 测试：scan 三条件 / claim / 并发抢锁 / 依赖检查 |
 | `demo_autonomous.py` | s17 | 完整演示：建任务 → 队友自动认领 → 干活 → summary |
 | `test_s16_protocols.py` | s16 | 协议测试：match_response 三校验 + 完整关机握手 |
@@ -218,9 +223,45 @@ python s08_context_compact.py   # 或任意一章
 
 两个坑：① LLM 可能绕过 harness 的 claim 直接 complete（complete_task 补 owner 兜底）；② 全局锁串行化 → 每任务一把锁（_locks_guard 保护锁字典本身）。
 
-## s18–s20（待学）
+## s18：工作区隔离（Worktree Isolation）
 
-worktree / MCP / 整合。
+**核心原则：各干各的目录，互不干扰。** 每个任务绑定一个 git worktree（独立目录 + 分支）。
+
+| 组件 | 机制 |
+|------|------|
+| `create_worktree` | git worktree add 创建独立目录 + 分支 |
+| `bind_task_to_worktree` | 任务绑定 worktree（不改状态，仍 pending） |
+| `remove/keep_worktree` | 收尾：有改动默认拒绝删，或保留等 review |
+| `wt_ctx` | 队友认领带 worktree 任务后，工具 cwd 自动切换 |
+| `validate_worktree_name` | 防路径穿越（拒绝 ../ 和非法字符） |
+
+合并是人工 review 后 git merge，不是 Lead 自动做（冲突取舍要人工）。
+
+## s19：MCP 插件（MCP Tool Bridge）
+
+**核心原则：外接工具，标准协议。** 真实连接官方 filesystem MCP server（非 mock）。
+
+| 组件 | 机制 |
+|------|------|
+| `RealMCPClient` | 真实 stdio 子进程 + JSON-RPC，后台 event loop 封装成同步 |
+| `connect_mcp` | 连接 server + 发现工具（tools/list） |
+| `mcp_call` | 统一调用入口（tools/call） |
+| `normalize_mcp_name` | 非 [a-zA-Z0-9_-] → _，防冲突/注入 |
+| 无缓存 | 工具池动态变化后缓存失效，每次重建 |
+
+## s20：整合（Comprehensive Agent Turn）
+
+**核心原则：机制很多，循环一个。** 把 s01–s19 的机制合回同一个 while True。
+
+```
+while True:
+    response = LLM(messages, tools)
+    if not has_tool_use(response): return
+    results = execute_tools(response)
+    messages.append(tool_results)
+```
+
+循环周围挂载：hooks（UserPromptSubmit/PreToolUse/PostToolUse/Stop）、权限、组装 system prompt、错误恢复、工具分发、压缩、记忆、后台、cron、团队、worktree、MCP。模型负责判断，harness 负责组织环境。
 
 ## s12：任务系统（Task System）
 
